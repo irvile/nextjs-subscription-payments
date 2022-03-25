@@ -1,54 +1,61 @@
 import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { useState, useEffect } from 'react';
+import { useState, ReactNode } from 'react';
 
-import LoadingDots from '@/components/ui/LoadingDots';
-import Button from '@/components/ui/Button';
-import { useUser } from '@/utils/useUser';
-import { postData } from '@/utils/helpers';
+import LoadingDots from 'components/ui/LoadingDots';
+import Button from 'components/ui/Button';
+import { useUser } from 'utils/useUser';
+import { postData } from 'utils/helpers';
 
-function Card({ title, description, footer, children }) {
+import { withAuthRequired, User } from '@supabase/supabase-auth-helpers/nextjs';
+
+interface Props {
+  title: string;
+  description?: string;
+  footer?: ReactNode;
+  children: ReactNode;
+}
+
+function Card({ title, description, footer, children }: Props) {
   return (
-    <div className="border border-accents-1	max-w-3xl w-full p rounded-md m-auto my-8">
+    <div className="border border-zinc-700	max-w-3xl w-full p rounded-md m-auto my-8">
       <div className="px-5 py-4">
         <h3 className="text-2xl mb-1 font-medium">{title}</h3>
-        <p className="text-accents-5">{description}</p>
+        <p className="text-zinc-300">{description}</p>
         {children}
       </div>
-      <div className="border-t border-accents-1 bg-primary-2 p-4 text-accents-3 rounded-b-md">
+      <div className="border-t border-zinc-700 bg-zinc-900 p-4 text-zinc-500 rounded-b-md">
         {footer}
       </div>
     </div>
   );
 }
-export default function Account() {
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const { userLoaded, user, session, userDetails, subscription } = useUser();
 
-  useEffect(() => {
-    if (userLoaded && !user) router.replace('/signin');
-  }, [user, userLoaded]);
+export const getServerSideProps = withAuthRequired({ redirectTo: '/signin' });
+
+export default function Account({ user }: { user: User }) {
+  const [loading, setLoading] = useState(false);
+  const { isLoading, subscription, userDetails } = useUser();
 
   const redirectToCustomerPortal = async () => {
     setLoading(true);
-    const { url, error } = await postData({
-      url: '/api/create-portal-link',
-      token: session.access_token
-    });
-    if (error) return alert(error.message);
-    window.location.assign(url);
+    try {
+      const { url, error } = await postData({
+        url: '/api/create-portal-link'
+      });
+      window.location.assign(url);
+    } catch (error) {
+      if (error) return alert((error as Error).message);
+    }
     setLoading(false);
   };
 
-  const subscriptionName = subscription && subscription.prices.products.name;
   const subscriptionPrice =
     subscription &&
     new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: subscription.prices.currency,
+      currency: subscription?.prices?.currency,
       minimumFractionDigits: 0
-    }).format(subscription.prices.unit_amount / 100);
+    }).format((subscription?.prices?.unit_amount || 0) / 100);
 
   return (
     <section className="bg-black mb-32">
@@ -57,7 +64,7 @@ export default function Account() {
           <h1 className="text-4xl font-extrabold text-white sm:text-center sm:text-6xl">
             Account
           </h1>
-          <p className="mt-5 text-xl text-accents-6 sm:text-center sm:text-2xl max-w-2xl m-auto">
+          <p className="mt-5 text-xl text-zinc-200 sm:text-center sm:text-2xl max-w-2xl m-auto">
             We partnered with Stripe for a simplified billing.
           </p>
         </div>
@@ -66,8 +73,9 @@ export default function Account() {
         <Card
           title="Your Plan"
           description={
-            subscriptionName &&
-            `You are currently on the ${subscriptionName} plan.`
+            subscription
+              ? `You are currently on the ${subscription?.prices?.products?.name} plan.`
+              : ''
           }
           footer={
             <div className="flex items-start justify-between flex-col sm:flex-row sm:items-center">
@@ -86,12 +94,12 @@ export default function Account() {
           }
         >
           <div className="text-xl mt-8 mb-4 font-semibold">
-            {!userLoaded ? (
+            {isLoading ? (
               <div className="h-12 mb-6">
                 <LoadingDots />
               </div>
-            ) : subscriptionPrice ? (
-              `${subscriptionPrice}/${subscription.prices.interval}`
+            ) : subscription ? (
+              `${subscriptionPrice}/${subscription?.prices?.interval}`
             ) : (
               <Link href="/">
                 <a>Choose your plan</a>
@@ -106,7 +114,10 @@ export default function Account() {
         >
           <div className="text-xl mt-8 mb-4 font-semibold">
             {userDetails ? (
-              `${userDetails?.full_name ?? ''}`
+              `${
+                userDetails.full_name ??
+                `${userDetails.first_name} ${userDetails.last_name}`
+              }`
             ) : (
               <div className="h-8 mb-6">
                 <LoadingDots />

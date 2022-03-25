@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import s from './Navbar.module.css';
 
-import Logo from '@/components/icons/Logo';
-import { useUser } from '@/utils/useUser';
+import Logo from 'components/icons/Logo';
+import { useUser } from 'utils/useUser';
+import LoadingDots from '../LoadingDots';
 
 const Navbar = () => {
-  const { user, signOut } = useUser();
+  const { user, isLoading } = useUser();
 
   return (
     <nav className={s.root}>
@@ -31,17 +32,18 @@ const Navbar = () => {
           </div>
 
           <div className="flex flex-1 justify-end space-x-8">
-            {user ? (
-              <Link href="#">
-                <a className={s.link} onClick={() => signOut()}>
-                  Sign out
-                </a>
+            {isLoading && <LoadingDots></LoadingDots>}
+            {user && !isLoading ? (
+              <Link href="/api/auth/logout">
+                <a className={s.link}>Sign out</a>
               </Link>
-            ) : (
+            ) : null}
+
+            {!user && !isLoading ? (
               <Link href="/signin">
                 <a className={s.link}>Sign in</a>
               </Link>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

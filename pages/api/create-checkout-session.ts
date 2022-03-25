@@ -1,18 +1,25 @@
-import { stripe } from '@/utils/stripe';
-import { getUser } from '@/utils/supabase-admin';
-import { createOrRetrieveCustomer } from '@/utils/useDatabase';
-import { getURL } from '@/utils/helpers';
+import { stripe } from 'utils/stripe';
+import {
+  getUser,
+  withAuthRequired
+} from '@supabase/supabase-auth-helpers/nextjs';
+import { createOrRetrieveCustomer } from 'utils/supabase-admin';
+import { getURL } from 'utils/helpers';
+import { NextApiRequest, NextApiResponse } from 'next';
 
-const createCheckoutSession = async (req, res) => {
+const createCheckoutSession = async (
+  req: NextApiRequest,
+  res: NextApiResponse
+) => {
   if (req.method === 'POST') {
-    const token = req.headers.token;
     const { price, quantity = 1, metadata = {} } = req.body;
 
     try {
-      const user = await getUser(token);
+      const { user } = await getUser({ req, res });
+
       const customer = await createOrRetrieveCustomer({
-        uuid: user.id,
-        email: user.email
+        uuid: user?.id || '',
+        email: user?.email || ''
       });
 
       const session = await stripe.checkout.sessions.create({
@@ -21,7 +28,7 @@ const createCheckoutSession = async (req, res) => {
         customer,
         line_items: [
           {
-            price,
+            price: price.id,
             quantity
           }
         ],
@@ -36,7 +43,7 @@ const createCheckoutSession = async (req, res) => {
       });
 
       return res.status(200).json({ sessionId: session.id });
-    } catch (err) {
+    } catch (err: any) {
       console.log(err);
       res
         .status(500)
@@ -48,4 +55,4 @@ const createCheckoutSession = async (req, res) => {
   }
 };
 
-export default createCheckoutSession;
+export default withAuthRequired(createCheckoutSession);
