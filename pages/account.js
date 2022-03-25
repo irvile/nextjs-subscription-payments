@@ -6,6 +6,7 @@ import LoadingDots from '@/components/ui/LoadingDots';
 import Button from '@/components/ui/Button';
 import { useUser } from '@/utils/useUser';
 import { postData } from '@/utils/helpers';
+import Input from '@/components/ui/Input';
 
 function Card({ title, description, footer, children }) {
   return (
@@ -23,12 +24,29 @@ function Card({ title, description, footer, children }) {
 }
 export default function Account() {
   const [loading, setLoading] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [submitingFullName, setSubmitingFullName] = useState(false);
+  const [fullNameUpdateResult, setFullNameUpdateResult] = useState(null);
+
   const router = useRouter();
-  const { userLoaded, user, session, userDetails, subscription } = useUser();
+  const {
+    userLoaded,
+    user,
+    session,
+    userDetails,
+    subscription,
+    updateUserFullname
+  } = useUser();
 
   useEffect(() => {
     if (!user) router.replace('/signin');
   }, [user]);
+
+  useEffect(() => {
+    if (userLoaded && userDetails) {
+      setFullName(userDetails.full_name);
+    }
+  }, [userLoaded, userDetails, setFullName]);
 
   const redirectToCustomerPortal = async () => {
     setLoading(true);
@@ -49,6 +67,30 @@ export default function Account() {
       currency: subscription.prices.currency,
       minimumFractionDigits: 0
     }).format(subscription.prices.unit_amount / 100);
+
+  async function handleClickUserFullName() {
+    setSubmitingFullName(true);
+
+    const error = await updateUserFullname(user.id, fullName);
+    setSubmitingFullName(false);
+
+    if (error) {
+      setFullNameUpdateResult({
+        type: 'error',
+        content: 'Something went wrong!'
+      });
+    } else {
+      setFullNameUpdateResult({
+        type: 'note',
+        content: 'Name updated with success!'
+      });
+    }
+  }
+
+  function handleFullNameChange(fullNameChanged) {
+    setFullName(fullNameChanged);
+    setFullNameUpdateResult(null);
+  }
 
   return (
     <section className="bg-black mb-32">
@@ -106,7 +148,34 @@ export default function Account() {
         >
           <div className="text-xl mt-8 mb-4 font-semibold">
             {userDetails ? (
-              `${userDetails?.full_name ?? ''}`
+              <div className="flex items-center space-x-4">
+                <Input
+                  placeholder="Name"
+                  value={fullName}
+                  onChange={handleFullNameChange}
+                />
+                <Button
+                  variant="slim"
+                  type="submit"
+                  onClick={handleClickUserFullName}
+                  loading={submitingFullName}
+                  disabled={submitingFullName}
+                >
+                  Update name
+                </Button>
+
+                {fullNameUpdateResult && (
+                  <span
+                    className={`text-sm ${
+                      fullNameUpdateResult.type === 'note'
+                        ? 'text-green'
+                        : 'text-pink'
+                    }`}
+                  >
+                    {fullNameUpdateResult.content}
+                  </span>
+                )}
+              </div>
             ) : (
               <div className="h-8 mb-6">
                 <LoadingDots />

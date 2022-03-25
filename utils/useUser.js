@@ -34,6 +34,16 @@ export const UserContextProvider = (props) => {
       .in('status', ['trialing', 'active'])
       .single();
 
+  const updateUserFullname = async (userId, newFullName) => {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ full_name: newFullName })
+      .match({ id: userId });
+
+    setUserDetails(data[0]);
+    return error;
+  };
+
   useEffect(() => {
     if (user) {
       Promise.allSettled([getUserDetails(), getSubscription()]).then(
@@ -58,7 +68,8 @@ export const UserContextProvider = (props) => {
       setUserDetails(null);
       setSubscription(null);
       return supabase.auth.signOut();
-    }
+    },
+    updateUserFullname
   };
   return <UserContext.Provider value={value} {...props} />;
 };
